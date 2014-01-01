@@ -37,7 +37,7 @@ class Encoder:
 		channels = ((sine_wave(frequency, RATE, 0.0),) for i in range(self.num_channels))
 		silence = compute_samples(channels, num_samples)
 		return itertools.chain(samples, silence)
-
+		
 	def save_wav(self, filename, samples, total_duration):
 		write_wavefile(filename, samples, RATE * total_duration, self.num_channels, self.bits_per_sample / 8, RATE)
 
