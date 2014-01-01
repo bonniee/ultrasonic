@@ -34,12 +34,13 @@ class Encoder:
 		num_samples = int(RATE * duration * 0.5)
 		channels = ((sine_wave(frequency, RATE, self.amplitude),) for i in range(self.num_channels))
 		samples = compute_samples(channels, num_samples)
-		channels = ((sine_wave(frequency, RATE, 0),) for i in range(self.num_channels))
+		channels = ((sine_wave(frequency, RATE, 0.0),) for i in range(self.num_channels))
 		silence = compute_samples(channels, num_samples)
 		return itertools.chain(samples, silence)
 
 	def save_wav(self, filename, samples, total_duration):
 		write_wavefile(filename, samples, RATE * total_duration, self.num_channels, self.bits_per_sample / 8, RATE)
+
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(prog="sound_encoder")
