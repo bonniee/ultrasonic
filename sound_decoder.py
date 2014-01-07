@@ -118,11 +118,11 @@ class Decoder:
     else:
       thresh = THRESH_LOW
 
-    if power1 / power0 > thresh:
+    if power1 / power0 > THRESHOLD:
       state = 1
-    elif power0 / power1 > thresh:
+    elif power0 / power1 > THRESHOLD:
       state = 0
-    # print self.prev_state, thresh, int(power1 / power0), int(power0 / power1)
+    # print int(power1 / power0), int(power0 / power1)
 
     # if self.debug:
     #   if state == -1:
