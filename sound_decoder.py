@@ -1,4 +1,5 @@
 from __future__ import division # float division of integers
+from collections import deque
 
 import pyaudio
 import wave
@@ -6,6 +7,7 @@ import struct
 import math
 import numpy
 import sys
+from scipy import signal
 
 from constants import *
 
@@ -15,11 +17,17 @@ WINDOW = numpy.hamming(CHUNK_SIZE)
 
 class Decoder:
   def __init__(self, debug):
-    # -1 for no signal, 0 and 1
-    self.state = -1
-    self.new_state = -1
-    self.new_count = 1
     self.audio = None
+
+    half_win = int(BIT_DURATION * RATE / CHUNK_SIZE / 2)
+    self.win_len = 2 * half_win
+    self.win_fudge = int(self.win_len / 2)
+    self.buffer = deque()
+    self.buf_len = self.win_len + self.win_fudge
+    self.sig_0 = [0] * half_win + [-1] * half_win
+    self.sig_1 = [1] * half_win + [-1] * half_win
+    self.sig_N = [-1] * self.win_len
+    self.prev_state = -1
     self.byte = []
     self.idle_count = 0
     self.debug = debug
@@ -41,13 +49,51 @@ class Decoder:
       power0 = self.goertzel(ZERO)
       power1 = self.goertzel(ONE)
       self.update_state(power0, power1)
+      self.signal_to_bits()
       self.process_byte()
+
+  def printbuf(self, buf):
+    newbuf = ['-' if x is -1 else x for x in buf]
+    print repr(newbuf).replace(', ', '').replace('\'', '')
+
+  # Takes the raw noisy samples of -1/0/1 and finds the bitstream from it
+  def signal_to_bits(self):
+    if len(self.buffer) < self.buf_len:
+      return
+    buf = list(self.buffer)
+    
+    if self.debug:
+      self.printbuf(buf)
+    
+    costs = [[] for i in range(3)]
+    for i in range(self.win_fudge):
+      win = buf[i : self.win_len + i]
+      costs[0].append(sum(x != y for x, y in zip(win, self.sig_0)))
+      costs[1].append(sum(x != y for x, y in zip(win, self.sig_1)))
+      costs[2].append(sum(x != y for x, y in zip(win, self.sig_N)))
+    min_costs = [min(costs[i]) for i in range(3)]
+    min_cost = min(min_costs)
+    signal = min_costs.index(min_cost)
+    fudge = costs[signal].index(min_cost)
+    for i in range(self.win_len + fudge):
+      self.buffer.popleft()
+
+    if signal < 2:
+      self.byte.append(signal)
+    else:
+      self.idle_count += 1
+
+    if self.debug:
+      if signal == 2:
+        signal = '-'
+      sys.stdout.write('')
+      sys.stdout.write('|{}|\n'.format(signal))
+      sys.stdout.flush()
 
   # For now, just print out the characters as we go.
   def process_byte(self):
 
     if len(self.byte) != 8:
-      self.idle_count += 1
       if self.idle_count > IDLE_LIMIT:
         if len(self.byte) > 0:
           self.byte = []
@@ -63,42 +109,32 @@ class Decoder:
     sys.stdout.flush()
     self.byte = []
 
-  # We want to see SMOOTH_COUNT previous samples match before switching. Evens out noise.
+  # Determine the raw input signal of silences, 0s, and 1s. Insert into sliding window.
   def update_state(self, power0, power1):
-    cur_state = -1
-    if power1 / power0 > THRESHOLD:
-      cur_state = 1
-    elif power0 / power1 > THRESHOLD:
-      cur_state = 0
+    state = -1
 
-    if self.debug:
-      if cur_state == -1:
-        sys.stdout.write('-')
-      else:
-        sys.stdout.write(str(cur_state))
-      sys.stdout.flush()
-
-    # If the current state matches the last few states:
-    if self.new_state == cur_state:
-      if self.new_count <= SMOOTH_COUNT:
-        self.new_count += 1 # new_count can only ever go up to SMOOTH_COUNT + 1.
-
-      # If we have enough of the same new state to reasonably believe it, change state
-      if self.new_count == SMOOTH_COUNT:
-        self.state = cur_state
-        self.idle_count = 0
-
-        # If the new state is a 0 or 1, use it!
-        if self.state != -1:
-          self.byte.append(self.state)
-          if self.debug:
-            sys.stdout.write('|' + str(self.state) + '|')
-            sys.stdout.flush()
-
-    # The current state is different from the last few states, so reset.
+    if self.prev_state is -1:
+      thresh = THRESH_HIGH
     else:
-      self.new_state = cur_state
-      self.new_count = 1
+      thresh = THRESH_LOW
+
+    if power1 / power0 > thresh:
+      state = 1
+    elif power0 / power1 > thresh:
+      state = 0
+    # print self.prev_state, thresh, int(power1 / power0), int(power0 / power1)
+
+    # if self.debug:
+    #   if state == -1:
+    #     sys.stdout.write('-')
+    #   else:
+    #     sys.stdout.write(str(state))
+    #   sys.stdout.flush()
+    self.prev_state = state
+
+    if len(self.buffer) >= self.buf_len:
+      self.buffer.popleft()
+    self.buffer.append(state)
 
   def goertzel(self, frequency):
     prev1 = 0.0
@@ -113,8 +149,8 @@ class Decoder:
     return int(power) + 1 # prevents division by zero problems
 
   def window(self):
-    for i in range(CHUNK_SIZE):
-      self.audio[i] = self.audio[i] * WINDOW[i]
+    self.audio = [aud * win for aud, win in zip(self.audio, WINDOW)]
+
 
 def main():
   if len(sys.argv) == 2 and sys.argv[1] == 'debug':
