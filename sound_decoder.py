@@ -81,6 +81,7 @@ class Decoder:
       # If we get a charstart signal, reset byte!
       if len(self.byte) > 0:
         sys.stdout.write('*')
+        sys.stdout.flush()
         self.byte = []
 
     if self.debug:
