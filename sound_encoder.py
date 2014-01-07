@@ -24,13 +24,15 @@ class Encoder:
 	def encode(self, somestring, filename):
 		samples = None
 		count = 0
-		binform = ''.join(format(ord(i), 'b').zfill(8) for i in somestring)
+		binform = ''.join('2' + format(ord(i), 'b').zfill(8) for i in somestring)
 		soundlist = []
 		print binform
 		for b in binform:
 			freq = ZERO
 			if (b is '1'):
 				freq = ONE
+			elif (b is '2'):
+				freq = CHARSTART
 			soundlist = np.hstack((soundlist, self.getbit(freq)))
 
 		wavfile.write(filename,RATE,soundlist.astype(np.dtype('int16')))
@@ -52,9 +54,7 @@ class Encoder:
 			x[xstart + i] = x[xstart + i] * sigmoid_inv[i]
 			x[i] = x[i] * sigmoid[i]
 
-		# silence = [0 for i in range(int(BIT_DURATION*RATE/2.0))]
 		music=np.hstack((music,x))
-		# music=np.hstack((music,silence))
 		return music
 
 if __name__ == "__main__":

@@ -19,17 +19,11 @@ class Decoder:
   def __init__(self, debug):
     self.audio = None
 
-    half_win = int(BIT_DURATION * RATE / CHUNK_SIZE / 2)
-    self.win_len = 2 * half_win
+    self.win_len = 2 * int(BIT_DURATION * RATE / CHUNK_SIZE / 2)
     self.win_fudge = int(self.win_len / 2)
     self.buffer = deque()
     self.buf_len = self.win_len + self.win_fudge
-    self.sig_0 = [0] * half_win + [-1] * half_win
-    self.sig_1 = [1] * half_win + [-1] * half_win
-    self.sig_N = [-1] * self.win_len
-    self.prev_state = -1
     self.byte = []
-    self.idle_count = 0
     self.debug = debug
 
   def listen(self):
@@ -48,7 +42,9 @@ class Decoder:
       self.window()
       power0 = self.goertzel(ZERO)
       power1 = self.goertzel(ONE)
-      self.update_state(power0, power1)
+      powerC = self.goertzel(CHARSTART)
+      base = self.goertzel(BASELINE)
+      self.update_state(power0, power1, powerC, base)
       self.signal_to_bits()
       self.process_byte()
 
@@ -65,12 +61,13 @@ class Decoder:
     if self.debug:
       self.printbuf(buf)
     
-    costs = [[] for i in range(3)]
+    costs = [[] for i in range(4)]
     for i in range(self.win_fudge):
       win = buf[i : self.win_len + i]
-      costs[0].append(sum(x != y for x, y in zip(win, self.sig_0)))
-      costs[1].append(sum(x != y for x, y in zip(win, self.sig_1)))
-      costs[2].append(sum(x != y for x, y in zip(win, self.sig_N)))
+      costs[0].append(sum(x != 0 for x in win))
+      costs[1].append(sum(x != 1 for x in win))
+      costs[2].append(sum(x != 2 for x in win))
+      costs[3].append(sum(x != -1 for x in win))
     min_costs = [min(costs[i]) for i in range(3)]
     min_cost = min(min_costs)
     signal = min_costs.index(min_cost)
@@ -80,11 +77,14 @@ class Decoder:
 
     if signal < 2:
       self.byte.append(signal)
-    else:
-      self.idle_count += 1
+    elif signal == 2:
+      # If we get a charstart signal, reset byte!
+      if len(self.byte) > 0:
+        sys.stdout.write('*')
+        self.byte = []
 
     if self.debug:
-      if signal == 2:
+      if signal == 3:
         signal = '-'
       sys.stdout.write('')
       sys.stdout.write('|{}|\n'.format(signal))
@@ -92,15 +92,8 @@ class Decoder:
 
   # For now, just print out the characters as we go.
   def process_byte(self):
-
     if len(self.byte) != 8:
-      if self.idle_count > IDLE_LIMIT:
-        if len(self.byte) > 0:
-          self.byte = []
-          print
-        self.idle_count = 0
-      return;
-    
+      return
     ascii = 0
     for bit in self.byte:
       ascii = (ascii << 1) | bit
@@ -110,26 +103,16 @@ class Decoder:
     self.byte = []
 
   # Determine the raw input signal of silences, 0s, and 1s. Insert into sliding window.
-  def update_state(self, power0, power1):
+  def update_state(self, power0, power1, powerC, base):
     state = -1
-
-    if self.prev_state is -1:
-      thresh = THRESH_HIGH
-    else:
-      thresh = THRESH_LOW
-
-    if power1 / power0 > THRESHOLD:
+    if power1 / base > ONE_THRESH:
       state = 1
-    elif power0 / power1 > THRESHOLD:
+    elif power0 / base > ZERO_THRESH:
       state = 0
-    # print int(power1 / power0), int(power0 / power1)
+    elif powerC / base > CHARSTART_THRESH:
+      state = 2
+    # print int(power0 / base), int(power1 / base), int(powerC / base)
 
-    # if self.debug:
-    #   if state == -1:
-    #     sys.stdout.write('-')
-    #   else:
-    #     sys.stdout.write(str(state))
-    #   sys.stdout.flush()
     self.prev_state = state
 
     if len(self.buffer) >= self.buf_len:
