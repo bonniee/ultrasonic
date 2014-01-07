@@ -35,10 +35,10 @@ class Encoder:
 
 		wavfile.write(filename,RATE,soundlist.astype(np.dtype('int16')))
 
-	def getbit(self, freq, duration=1):
+	def getbit(self, freq):
 
 		music=[]
-		t=np.arange(0,duration,1./RATE) #time
+		t=np.arange(0,BIT_DURATION/2.0,1./RATE) #time
 
 		x = np.sin(2*np.pi*freq*t) #generated signals
 		x = [int(val * 32000) for val in x]
@@ -51,7 +51,7 @@ class Encoder:
 			x[xstart + i] = x[xstart + i] * sigmoid_inv[i]
 			x[i] = x[i] * sigmoid[i]
 
-		silence = [0 for i in range(duration*RATE)]
+		silence = [0 for i in range(int(BIT_DURATION*RATE/2.0))]
 		music=np.hstack((music,x))
 		music=np.hstack((music,silence))
 		return music
