@@ -68,7 +68,7 @@ class Decoder:
       costs[1].append(sum(x != 1 for x in win))
       costs[2].append(sum(x != 2 for x in win))
       costs[3].append(sum(x != -1 for x in win))
-    min_costs = [min(costs[i]) for i in range(3)]
+    min_costs = [min(costs[i]) for i in range(4)]
     min_cost = min(min_costs)
     signal = min_costs.index(min_cost)
     fudge = costs[signal].index(min_cost)
@@ -79,10 +79,7 @@ class Decoder:
       self.byte.append(signal)
     elif signal == 2:
       # If we get a charstart signal, reset byte!
-      if len(self.byte) > 0:
-        sys.stdout.write('*')
-        sys.stdout.flush()
-        self.byte = []
+      self.byte = []
 
     if self.debug:
       if signal == 3:
