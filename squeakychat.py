@@ -73,7 +73,6 @@ class SqueakyChat:
         s = raw_input('')
         if len(s) < 1:
           continue
-        s = '\n' + s + '\n'
         self.enc.encode(s, self.TEMP_FILE)
         self.dec.stop_listening()
         os.system("afplay " + self.TEMP_FILE)

@@ -15,5 +15,5 @@ ZERO_THRESH = 20
 ONE = 20000.0
 ONE_THRESH = 20
 
-BIT_DURATION = 0.2
+BIT_DURATION = 0.1
 IDLE_LIMIT = 20 # If we don't hear anything for a while (~2sec), clear buffer.
