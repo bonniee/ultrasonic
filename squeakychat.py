@@ -1,10 +1,10 @@
 from sound_decoder import *
 from sound_encoder import *
-import curses, traceback, sys, os, argparse, nltk, string, viterbi
+import curses, traceback, sys, os, argparse, string
 
 class SqueakyChat:
 
-  def __init__(self, viterbi_flag=False):
+  def __init__(self):
     
     # Set up audio backend
     self.TEMP_FILE = 'tmp.wav'
@@ -15,57 +15,20 @@ class SqueakyChat:
     self.dec.attach_idle_callback(self.idle_callback)
     self.buf = ''
 
-    self.should_viterbi = viterbi_flag
-
-
   def toggleBit(int_type, offset):
     mask = 1 << offset
     return(int_type ^ mask)
 
-  def viterbify(self):
-    input_str = self.buf
-    if len(input_str) < 1:
-      return
-    self.buf = ''
-
-    corpus = nltk.corpus.nps_chat.raw()
-    alpha = string.ascii_letters #+ string.digits + string.punctuation
-    print alpha
-    start_probs, trans_probs = viterbi.get_probabilities(corpus, alpha)
-    viterbi_obj = viterbi.Viterbi(start_probs, trans_probs)
-    print 'viterbify! str = ' + input_str
-
-    for char in input_str:
-      print 'viterbi: handling char ' + char
-      probs_dict = {char : 0 for char in alpha}
-      probs_dict[char] = 0.8
-      for i in range(8):
-        weird = ord(char) ^ (1 << i)
-        if chr(weird) in probs_dict:
-          print 'toggle bit: ' + chr(weird)
-          probs_dict[chr(weird)] = 0.025
-      print probs_dict
-      viterbi_obj.observe(probs_dict)
-      print 'Viterbi BEST PATH'
-      print viterbi_obj.best_path()
-
   def idle_callback(self):
-    # print 'idle_callback'
     if len(self.buf) > 0:
       print
-      if self.should_viterbi:
-        self.viterbify()
       self.buf = ''
 
   def printer(self, char):
     # print 'received ' + char
     self.buf += char
-    if self.should_viterbi:
-      if (char is '\n'):
-        self.viterbify()
-    else:
-      sys.stdout.write('%s' % char)
-      sys.stdout.flush()
+    sys.stdout.write('%s' % char)
+    sys.stdout.flush()
 
   def start_chat(self):
     while True:
@@ -86,9 +49,7 @@ class SqueakyChat:
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(prog="squeaky_chat")
-  parser.add_argument('--v', help="Use Viterbi", action="store_true")
-  args = parser.parse_args()
-  # print args
 
-  chat = SqueakyChat(args.v)
+  chat = SqueakyChat()
   chat.start_chat()
+  
