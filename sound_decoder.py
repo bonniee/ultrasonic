@@ -7,7 +7,7 @@ import struct
 import math
 import numpy
 import sys
-from scipy import signal
+import threading
 
 from constants import *
 
@@ -16,28 +16,37 @@ TWOPI = 2 * math.pi
 WINDOW = numpy.hamming(CHUNK_SIZE)
 
 class Decoder:
+  
   def __init__(self, debug):
-    self.audio = None
-
     self.win_len = 2 * int(BIT_DURATION * RATE / CHUNK_SIZE / 2)
     self.win_fudge = int(self.win_len / 2)
     self.buffer = deque()
     self.buf_len = self.win_len + self.win_fudge
     self.byte = []
+    self.idlecount = 0
+
+    self.do_quit = False
+    self.character_callback = None
+    self.idle_callback = None
     self.debug = debug
+    self.p = pyaudio.PyAudio()
+    self.stream = self.p.open(format = pyaudio.paInt16,
+                  channels = 1,
+                  rate = RATE,
+                  input = True,
+                  frames_per_buffer = AUDIOBUF_SIZE)
+    
+    listen_thread = threading.Thread(target = self.listen)
+    listen_thread.start()
 
   def listen(self):
-    print 'Listening... (For debug output, use <python sound_decoder.py debug>)'
-    p = pyaudio.PyAudio()
-    stream = p.open(format = pyaudio.paInt16,
-                    channels = 1,
-                    rate = RATE,
-                    input = True,
-                    frames_per_buffer = CHUNK_SIZE)
-
-    # Listen to READ_SIZE samples at a time.
+    self.do_listen = True
     while (True):
-      audiostr = stream.read(CHUNK_SIZE)
+      if self.do_quit == True:
+        break
+      audiostr = self.stream.read(CHUNK_SIZE)
+      if self.do_listen == False:
+        continue
       self.audio = list(struct.unpack("%dh" % CHUNK_SIZE, audiostr))
       self.window()
       power0 = self.goertzel(ZERO)
@@ -47,6 +56,25 @@ class Decoder:
       self.update_state(power0, power1, powerC, base)
       self.signal_to_bits()
       self.process_byte()
+    
+    self.stream.stop_stream()
+    self.stream.close()
+    self.p.terminate()
+
+  def attach_character_callback(self, func):
+    self.character_callback = func
+
+  def attach_idle_callback(self, func):
+    self.idle_callback = func
+
+  def start_listening(self):
+    self.do_listen = True
+
+  def stop_listening(self):
+    self.do_listen = False
+
+  def quit(self):
+    self.do_quit = True
 
   def printbuf(self, buf):
     newbuf = ['-' if x is -1 else x for x in buf]
@@ -75,11 +103,21 @@ class Decoder:
     for i in range(self.win_len + fudge):
       self.buffer.popleft()
 
+    # If we got a signal, put it in the byte!
     if signal < 2:
       self.byte.append(signal)
+    # If we get a charstart signal, reset byte!
     elif signal == 2:
-      # If we get a charstart signal, reset byte!
       self.byte = []
+    
+    # If we get no signal, increment idlecount if we are idling
+    if signal == 3:
+      self.idlecount += 1
+    else:
+      self.idlecount = 0
+    if self.idlecount > IDLE_LIMIT and self.idle_callback:
+      print 'idlything'
+      self.idle_callback()
 
     if self.debug:
       if signal == 3:
@@ -96,8 +134,11 @@ class Decoder:
     for bit in self.byte:
       ascii = (ascii << 1) | bit
     char = chr(ascii)
-    sys.stdout.write(char)
-    sys.stdout.flush()
+    if self.character_callback:
+      self.character_callback(char)
+    else:
+      sys.stdout.write(char)
+      sys.stdout.flush()
     self.byte = []
 
   # Determine the raw input signal of silences, 0s, and 1s. Insert into sliding window.
@@ -110,8 +151,6 @@ class Decoder:
     elif powerC / base > CHARSTART_THRESH:
       state = 2
     # print int(power0 / base), int(power1 / base), int(powerC / base)
-
-    self.prev_state = state
 
     if len(self.buffer) >= self.buf_len:
       self.buffer.popleft()
@@ -132,13 +171,12 @@ class Decoder:
   def window(self):
     self.audio = [aud * win for aud, win in zip(self.audio, WINDOW)]
 
-
 def main():
   if len(sys.argv) == 2 and sys.argv[1] == 'debug':
     dec = Decoder(1)
   else:
     dec = Decoder(0)
-  dec.listen()
+  print 'Listening... (For debug output, use <python sound_decoder.py debug>)'
 
 if __name__ == "__main__":
-    main()
+  main()

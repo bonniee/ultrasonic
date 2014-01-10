@@ -1,6 +1,7 @@
 # Audio constants
 RATE = 44100
 CHUNK_SIZE = 512
+AUDIOBUF_SIZE = 2048
 
 # Constants for FSK
 BASELINE = 19400.0
@@ -15,4 +16,4 @@ ONE = 20000.0
 ONE_THRESH = 20
 
 BIT_DURATION = 0.1
-IDLE_LIMIT = 50 # If we don't hear anything for a while, clear buffer.
+IDLE_LIMIT = 20 # If we don't hear anything for a while (~2sec), clear buffer.
