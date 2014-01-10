@@ -26,7 +26,7 @@ class Encoder:
 		count = 0
 		binform = ''.join('2' + format(ord(i), 'b').zfill(8) for i in somestring)
 		soundlist = []
-		print binform
+		# print binform
 		for b in binform:
 			freq = ZERO
 			if (b is '1'):

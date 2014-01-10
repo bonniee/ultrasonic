@@ -29,7 +29,7 @@ class SqueakyChat:
     self.buf = ''
 
     corpus = nltk.corpus.nps_chat.raw()
-    alpha = string.ascii_letters + string.digits + string.punctuation
+    alpha = string.ascii_letters #+ string.digits + string.punctuation
     print alpha
     start_probs, trans_probs = viterbi.get_probabilities(corpus, alpha)
     viterbi_obj = viterbi.Viterbi(start_probs, trans_probs)
@@ -44,22 +44,25 @@ class SqueakyChat:
         if chr(weird) in probs_dict:
           print 'toggle bit: ' + chr(weird)
           probs_dict[chr(weird)] = 0.025
+      print probs_dict
       viterbi_obj.observe(probs_dict)
       print 'Viterbi BEST PATH'
       print viterbi_obj.best_path()
 
-
   def idle_callback(self):
     # print 'idle_callback'
     if len(self.buf) > 0:
-      self.viterbify()
+      print
+      if self.should_viterbi:
+        self.viterbify()
+      self.buf = ''
 
   def printer(self, char):
-    print 'received ' + char
+    # print 'received ' + char
+    self.buf += char
     if self.should_viterbi:
       if (char is '\n'):
         self.viterbify()
-      self.buf += char
     else:
       sys.stdout.write('%s' % char)
       sys.stdout.flush()
@@ -86,7 +89,7 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser(prog="squeaky_chat")
   parser.add_argument('--v', help="Use Viterbi", action="store_true")
   args = parser.parse_args()
-  print args
+  # print args
 
   chat = SqueakyChat(args.v)
   chat.start_chat()
