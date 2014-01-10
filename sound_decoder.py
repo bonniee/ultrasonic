@@ -176,7 +176,6 @@ def main():
     dec = Decoder(1)
   else:
     dec = Decoder(0)
-  print 'Listening... (For debug output, use <python sound_decoder.py debug>)'
 
 if __name__ == "__main__":
   main()
