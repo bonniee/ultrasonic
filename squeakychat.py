@@ -24,6 +24,8 @@ class SqueakyChat:
 
   def viterbify(self):
     input_str = self.buf
+    if len(input_str) < 1:
+      return
     self.buf = ''
 
     corpus = nltk.corpus.nps_chat.raw()
@@ -31,7 +33,7 @@ class SqueakyChat:
     print alpha
     start_probs, trans_probs = viterbi.get_probabilities(corpus, alpha)
     viterbi_obj = viterbi.Viterbi(start_probs, trans_probs)
-    print 'viterbify! str = ' + repr(str)
+    print 'viterbify! str = ' + input_str
 
     for char in input_str:
       print 'viterbi: handling char ' + char

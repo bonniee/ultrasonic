@@ -116,6 +116,7 @@ class Decoder:
     else:
       self.idlecount = 0
     if self.idlecount > IDLE_LIMIT and self.idle_callback:
+      self.idlecount = 0
       self.idle_callback()
 
     if self.debug:
