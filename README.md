@@ -1,8 +1,10 @@
 # An Ultrasonic Encoder/Decoder for Python
 
-## Authors: Bonnie Eisenman, Harvest Zhang
+## Wait, why?
 
-### What's here?
+This project was produced by Bonnie Eisenman and Harvest Zhang for our final project in a graduate seminar, COS 597G: Surveillance and Countermeasures.
+
+## What's here?
 
 The repo contains three files of interest:
 
@@ -10,9 +12,9 @@ The repo contains three files of interest:
 - sound_decoder.py: For decoding stuff.
 - squeakychat.py: For testing and demonstration.
 
-### Abstract
+## Abstract
 We explored the feasibility of using ultrasonic communication as a covert channel in consumer electronics products. We describe the implementation of an ultrasonic encoder and decoder, as well as a prototype chat client (“Squeaky- Chat”) used to demonstrate this functionality. We were able to sustain a transmission rate of 1 byte per second for ar- bitrary binary data, and we obtained up to 99.5% accuracy when broadcasting across 0 feet, and up to 81.6% accuracy when broadcasting across 10 feet. While this throughput is still quite low, we have demonstrated that for small messages ultrasonic communication is quite feasible using standard microphones and speakers shipped in consumer electronics. We then discuss limitations of this type of communication as well as potential use cases.
 
-### Report
+## Report
 
 Available in the repo; see SqueakyChat.pdf.
