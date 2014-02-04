@@ -1,14 +1,14 @@
 from sound_decoder import *
 from sound_encoder import *
-import curses, traceback, sys, os, argparse, string
+import sys
+import argparse
+import string
 
 class SqueakyChat:
 
   def __init__(self):
     
     # Set up audio backend
-    self.TEMP_FILE = 'tmp.wav'
-    self.COIN = "smb_coin.wav"
     self.enc = Encoder()
     self.dec = Decoder(0)
     self.dec.attach_character_callback(self.printer)
@@ -36,15 +36,13 @@ class SqueakyChat:
         s = raw_input('')
         if len(s) < 1:
           continue
-        self.enc.encode(s, self.TEMP_FILE)
         self.dec.stop_listening()
-        os.system("afplay " + self.TEMP_FILE)
-        os.system("rm " + self.TEMP_FILE)
+        self.enc.encodeplay(s)
         self.dec.start_listening()
 
       except:
-        # traceback.print_exc(file=sys.stdout)
         self.dec.quit()
+        self.enc.quit()
         sys.exit(0)
 
 if __name__ == "__main__":
